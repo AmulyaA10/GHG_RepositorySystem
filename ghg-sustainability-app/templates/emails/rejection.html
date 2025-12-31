@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #D32F2F;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .content {
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .details {
+            background-color: white;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #D32F2F;
+        }
+        .alert {
+            background-color: #FFEBEE;
+            border: 1px solid #FFCDD2;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>❌ Project Rejected - Action Required</h1>
+        </div>
+
+        <div class="content">
+            <h2>Your Project Has Been Rejected</h2>
+
+            <div class="alert">
+                <strong>⚠️ Action Required:</strong> Please review the feedback below and resubmit after making corrections.
+            </div>
+
+            <div class="details">
+                <strong>Project ID:</strong> {{project_id}}<br>
+                <strong>Project Name:</strong> {{project_name}}<br>
+                <strong>Organization:</strong> {{organization}}<br>
+                <strong>Status:</strong> {{status}}<br>
+                <strong>Reason Code:</strong> {{reason_code}}
+            </div>
+
+            <h3>Reviewer Comments:</h3>
+            <div class="details">
+                {{comments}}
+            </div>
+
+            <p><strong>Next Steps:</strong></p>
+            <ul>
+                <li>Review the rejection reason and comments</li>
+                <li>Make necessary corrections to your data</li>
+                <li>Upload any missing evidence</li>
+                <li>Resubmit the project for calculation</li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            <p>This is an automated notification. Please do not reply to this email.</p>
+            <p>&copy; 2024 GHG Sustainability Reporting System</p>
+        </div>
+    </div>
+</body>
+</html>
