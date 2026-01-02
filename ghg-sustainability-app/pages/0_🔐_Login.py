@@ -16,6 +16,35 @@ st.set_page_config(
 # Load custom CSS
 load_custom_css()
 
+# Add sidebar title and hide default "app" text
+with st.sidebar:
+    st.markdown(
+        """
+        <div style="text-align: center; padding: 1rem 0; margin-bottom: 1.5rem;
+                    background: linear-gradient(135deg, #E8EFF6 0%, #F0F4F8 100%);
+                    border-radius: 12px; border: 2px solid #1E40AF;">
+            <h2 style="margin: 0; color: #0C1E2E; font-size: 1.25rem; font-weight: 700;">
+                🌍 GHG Sustainability App
+            </h2>
+        </div>
+
+        <script>
+            setTimeout(function() {
+                const sidebar = document.querySelector('[data-testid="stSidebar"]');
+                if (sidebar) {
+                    const allDivs = sidebar.querySelectorAll('div');
+                    allDivs.forEach(div => {
+                        if (div.textContent.trim() === 'app' && div.children.length === 0) {
+                            div.remove();
+                        }
+                    });
+                }
+            }, 100);
+        </script>
+        """,
+        unsafe_allow_html=True
+    )
+
 def login_page():
     """Render login page"""
     page_header(

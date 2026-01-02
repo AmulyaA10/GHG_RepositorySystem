@@ -1,5 +1,6 @@
 """
 Report Generation Module - Excel and PDF Export
+Includes batch processing for large datasets
 """
 import pandas as pd
 from openpyxl import Workbook
@@ -9,15 +10,151 @@ from reportlab.lib.pagesizes import letter, A4
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Generator
 from datetime import datetime
 from pathlib import Path
 import logging
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
 class ReportGenerator:
-    """Generate Excel and PDF reports"""
+    """Generate Excel and PDF reports with batch processing support"""
+
+    BATCH_SIZE = 500  # Process 500 calculations at a time
+
+    @staticmethod
+    def fetch_calculations_batched(db: Session, project_id: int, batch_size: int = 500) -> Generator:
+        """
+        Fetch calculations in batches to avoid memory issues
+
+        Args:
+            db: Database session
+            project_id: Project ID
+            batch_size: Number of records per batch
+
+        Yields:
+            List of calculation dictionaries
+        """
+        from models import Calculation
+
+        offset = 0
+        while True:
+            batch = db.query(Calculation).filter(
+                Calculation.project_id == project_id
+            ).order_by(
+                Calculation.scope, Calculation.category
+            ).limit(batch_size).offset(offset).all()
+
+            if not batch:
+                break
+
+            # Convert to dictionaries
+            calc_dicts = []
+            for calc in batch:
+                calc_dicts.append({
+                    'scope': calc.scope,
+                    'category': calc.category,
+                    'activity_data': calc.activity_data,
+                    'emission_factor': calc.emission_factor,
+                    'emissions_tco2e': calc.emissions_tco2e
+                })
+
+            yield calc_dicts
+            offset += batch_size
+
+            logger.info(f"Processed batch {offset//batch_size}, records {offset-batch_size} to {offset}")
+
+    @staticmethod
+    def generate_excel_report_batched(db: Session, project, output_path: Path) -> bool:
+        """
+        Generate Excel report using batch processing - for large datasets
+
+        Args:
+            db: Database session
+            project: Project object
+            output_path: Output file path
+
+        Returns:
+            bool: True if successful
+        """
+        try:
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "GHG Emissions Report"
+
+            # Header
+            ws['A1'] = "GHG EMISSIONS REPORT"
+            ws['A1'].font = Font(size=16, bold=True)
+
+            # Project info
+            row = 3
+            info_data = [
+                ["Project ID:", project.id],
+                ["Project Name:", project.project_name],
+                ["Organization:", project.organization_name],
+                ["Reporting Year:", project.reporting_year],
+                ["Report Date:", datetime.now().strftime("%Y-%m-%d")],
+                ["Status:", project.status]
+            ]
+
+            for label, value in info_data:
+                ws[f'A{row}'] = label
+                ws[f'B{row}'] = value
+                ws[f'A{row}'].font = Font(bold=True)
+                row += 1
+
+            # Emissions summary
+            row += 2
+            ws[f'A{row}'] = "EMISSIONS SUMMARY"
+            ws[f'A{row}'].font = Font(size=14, bold=True)
+            row += 2
+
+            # Summary table headers
+            headers = ["Scope", "Category", "Activity Data", "Emission Factor", "Emissions (tCO2e)"]
+            for col, header in enumerate(headers, start=1):
+                cell = ws.cell(row=row, column=col, value=header)
+                cell.font = Font(bold=True)
+                cell.fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
+
+            row += 1
+
+            # Process calculations in batches
+            total_emissions = 0
+            total_records = 0
+
+            for batch in ReportGenerator.fetch_calculations_batched(db, project.id):
+                for calc in batch:
+                    ws.cell(row=row, column=1, value=calc.get('scope', 'N/A'))
+                    ws.cell(row=row, column=2, value=calc.get('category', 'N/A'))
+                    ws.cell(row=row, column=3, value=calc.get('activity_data', 0))
+                    ws.cell(row=row, column=4, value=calc.get('emission_factor', 0))
+                    ws.cell(row=row, column=5, value=calc.get('emissions_tco2e', 0))
+                    total_emissions += calc.get('emissions_tco2e', 0)
+                    total_records += 1
+                    row += 1
+
+            # Total row
+            row += 1
+            ws.cell(row=row, column=4, value="TOTAL:")
+            ws.cell(row=row, column=4).font = Font(bold=True)
+            ws.cell(row=row, column=5, value=total_emissions)
+            ws.cell(row=row, column=5).font = Font(bold=True)
+
+            # Adjust column widths
+            ws.column_dimensions['A'].width = 15
+            ws.column_dimensions['B'].width = 30
+            ws.column_dimensions['C'].width = 15
+            ws.column_dimensions['D'].width = 20
+            ws.column_dimensions['E'].width = 20
+
+            wb.save(output_path)
+            logger.info(f"Excel report generated with {total_records} records: {output_path}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Error generating Excel report: {e}")
+            return False
 
     @staticmethod
     def generate_excel_report(project, calculations: List[Dict], output_path: Path) -> bool:

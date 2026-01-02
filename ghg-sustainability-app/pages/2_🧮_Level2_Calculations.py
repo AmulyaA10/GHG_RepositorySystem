@@ -21,6 +21,35 @@ st.set_page_config(
 # Load custom CSS
 load_custom_css()
 
+# Add sidebar title and hide default "app" text
+with st.sidebar:
+    st.markdown(
+        """
+        <div style="text-align: center; padding: 1rem 0; margin-bottom: 1.5rem;
+                    background: linear-gradient(135deg, #E8EFF6 0%, #F0F4F8 100%);
+                    border-radius: 12px; border: 2px solid #1E40AF;">
+            <h2 style="margin: 0; color: #0C1E2E; font-size: 1.25rem; font-weight: 700;">
+                🌍 GHG Sustainability App
+            </h2>
+        </div>
+
+        <script>
+            setTimeout(function() {
+                const sidebar = document.querySelector('[data-testid="stSidebar"]');
+                if (sidebar) {
+                    const allDivs = sidebar.querySelectorAll('div');
+                    allDivs.forEach(div => {
+                        if (div.textContent.trim() === 'app' && div.children.length === 0) {
+                            div.remove();
+                        }
+                    });
+                }
+            }, 100);
+        </script>
+        """,
+        unsafe_allow_html=True
+    )
+
 def check_auth():
     """Check if user is logged in and has L2 role"""
     if not st.session_state.get("user"):
@@ -361,14 +390,53 @@ def main():
         with st.sidebar:
             st.header("Projects for Calculation")
 
-            projects = db.query(Project).filter(
+            # Search box
+            search_term = st.text_input(
+                "🔍 Search projects",
+                placeholder="Project or organization name...",
+                key="project_search_l2"
+            )
+
+            # Pagination setup
+            page_size = 20
+            if 'l2_project_page' not in st.session_state:
+                st.session_state.l2_project_page = 1
+
+            # Build query
+            query = db.query(Project).filter(
                 or_(
                     Project.status == "SUBMITTED",
                     Project.status == "UNDER_CALCULATION"
                 )
-            ).order_by(Project.submitted_at.desc()).all()
+            )
+
+            # Apply search filter
+            if search_term:
+                query = query.filter(
+                    or_(
+                        Project.project_name.ilike(f"%{search_term}%"),
+                        Project.organization_name.ilike(f"%{search_term}%")
+                    )
+                )
+
+            # Get total count for pagination
+            total_count = query.count()
+            total_pages = max(1, (total_count + page_size - 1) // page_size)
+
+            # Ensure current page is valid
+            if st.session_state.l2_project_page > total_pages:
+                st.session_state.l2_project_page = total_pages
+
+            # Get paginated results
+            projects = query.order_by(Project.submitted_at.desc())\
+                .limit(page_size)\
+                .offset((st.session_state.l2_project_page - 1) * page_size)\
+                .all()
 
             if projects:
+                # Show count
+                st.caption(f"Showing {len(projects)} of {total_count} projects")
+
                 project_options = {
                     f"[{p.status}] {p.project_name} - {p.organization_name} ({p.reporting_year})": p.id
                     for p in projects
@@ -376,7 +444,8 @@ def main():
 
                 selected_project_str = st.selectbox(
                     "Select Project",
-                    options=list(project_options.keys())
+                    options=list(project_options.keys()),
+                    key="project_select_l2"
                 )
 
                 selected_project_id = project_options[selected_project_str]
@@ -396,13 +465,35 @@ def main():
                     except Exception as e:
                         st.error(f"Error transitioning: {e}")
 
+                # Pagination controls
+                if total_pages > 1:
+                    col1, col2, col3 = st.columns([1, 2, 1])
+                    with col1:
+                        if st.session_state.l2_project_page > 1:
+                            if st.button("← Prev", key="prev_l2", use_container_width=True):
+                                st.session_state.l2_project_page -= 1
+                                st.rerun()
+                    with col2:
+                        st.caption(f"Page {st.session_state.l2_project_page}/{total_pages}")
+                    with col3:
+                        if st.session_state.l2_project_page < total_pages:
+                            if st.button("Next →", key="next_l2", use_container_width=True):
+                                st.session_state.l2_project_page += 1
+                                st.rerun()
+
                 st.markdown("---")
                 st.markdown(f"**Status:** `{selected_project.status}`")
                 st.markdown(f"**Organization:** {selected_project.organization_name}")
                 st.markdown(f"**Year:** {selected_project.reporting_year}")
 
             else:
-                st.info("No projects pending calculation.")
+                if search_term:
+                    st.info(f"No projects found matching '{search_term}'")
+                    if st.button("Clear search", key="clear_search_l2"):
+                        st.session_state.l2_project_page = 1
+                        st.rerun()
+                else:
+                    st.info("No projects pending calculation.")
                 selected_project = None
 
         # Logout button in sidebar

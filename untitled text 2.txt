@@ -1,0 +1,11 @@
+
+
+  Summary of Workflow:
+
+  | Step | User | Action              | Status After         |
+  |------|------|---------------------|----------------------|
+  | 1    | L1   | Enter data & submit | SUBMITTED            |
+  | 2    | L2   | Calculate emissions | UNDER_CALCULATION    |
+  | 3    | L2   | Submit for review   | PENDING_REVIEW       |
+  | 4    | L3   | Approve/Reject      | APPROVED or REJECTED |
+  | 5    | L4   | Lock project        | LOCKED               |

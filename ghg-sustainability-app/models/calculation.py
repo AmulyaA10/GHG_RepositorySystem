@@ -38,10 +38,10 @@ class Calculation(Base):
     calculated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     notes = Column(Text)
 
-    # Relationships
-    project = relationship("Project", back_populates="calculations")
-    criteria = relationship("Criteria", back_populates="calculations")
-    project_data = relationship("ProjectData", back_populates="calculations")
+    # Relationships - using lazy loading to prevent N+1 queries
+    project = relationship("Project", back_populates="calculations", lazy='select')
+    criteria = relationship("Criteria", back_populates="calculations", lazy='select')
+    project_data = relationship("ProjectData", back_populates="calculations", lazy='select')
 
     def __repr__(self):
         return f"<Calculation(id={self.id}, emissions={self.emissions_tco2e} tCO2e)>"

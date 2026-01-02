@@ -19,11 +19,11 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
-    # Relationships
-    projects = relationship("Project", back_populates="created_by_user", foreign_keys="Project.created_by")
-    audit_logs = relationship("AuditLog", back_populates="user")
-    reviews = relationship("Review", back_populates="reviewer")
-    approvals = relationship("Approval", back_populates="approver")
+    # Relationships - using lazy loading to prevent N+1 queries
+    projects = relationship("Project", back_populates="created_by_user", foreign_keys="Project.created_by", lazy='select')
+    audit_logs = relationship("AuditLog", back_populates="user", lazy='select')
+    reviews = relationship("Review", back_populates="reviewer", lazy='select')
+    approvals = relationship("Approval", back_populates="approver", lazy='select')
 
     def __repr__(self):
         return f"<User(id={self.id}, username='{self.username}', role='{self.role}')>"

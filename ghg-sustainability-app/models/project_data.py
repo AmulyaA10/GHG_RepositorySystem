@@ -26,10 +26,10 @@ class ProjectData(Base):
     entered_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
-    # Relationships
-    project = relationship("Project", back_populates="project_data")
-    criteria = relationship("Criteria", back_populates="project_data")
-    calculations = relationship("Calculation", back_populates="project_data", cascade="all, delete-orphan")
+    # Relationships - using lazy loading to prevent N+1 queries
+    project = relationship("Project", back_populates="project_data", lazy='select')
+    criteria = relationship("Criteria", back_populates="project_data", lazy='select')
+    calculations = relationship("Calculation", back_populates="project_data", cascade="all, delete-orphan", lazy='select')
 
     def __repr__(self):
         return f"<ProjectData(id={self.id}, project_id={self.project_id}, criteria_id={self.criteria_id})>"
