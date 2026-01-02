@@ -69,7 +69,7 @@ migrations/versions/__pycache__/
 
 # Streamlit
 .streamlit/secrets.toml
-.streamlit/config.toml
+# Keep config.toml for deployment
 
 # Docker
 docker-compose.override.yml
