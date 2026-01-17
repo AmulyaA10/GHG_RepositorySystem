@@ -12,6 +12,8 @@ gatherUsageStats = false
 headless = true
 enableXsrfProtection = true
 maxUploadSize = 10
+fileWatcherType = "none"
+runOnSave = false
 
 [client]
 showErrorDetails = true
