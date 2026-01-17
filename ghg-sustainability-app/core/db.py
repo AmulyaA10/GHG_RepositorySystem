@@ -11,6 +11,52 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+def test_database_connection(database_url: str) -> tuple[bool, str]:
+    """
+    Test database connection before creating the engine
+
+    Args:
+        database_url: Database connection URL
+
+    Returns:
+        tuple[bool, str]: (success, message)
+    """
+    try:
+        # Create a temporary engine just for testing
+        test_engine = create_engine(database_url, pool_pre_ping=True)
+
+        # Try to connect
+        with test_engine.connect() as conn:
+            result = conn.execute("SELECT 1")
+            result.close()
+
+        test_engine.dispose()
+        return True, "Database connection successful"
+    except Exception as e:
+        error_msg = str(e)
+
+        # Provide helpful error messages
+        if "could not connect" in error_msg.lower() or "connection refused" in error_msg.lower():
+            return False, "Cannot reach database server. Please check:\n1. DATABASE_URL is correct\n2. Database server is running\n3. Network/firewall allows connections"
+        elif "authentication failed" in error_msg.lower() or "password" in error_msg.lower():
+            return False, "Database authentication failed. Please check:\n1. Username is correct\n2. Password is correct\n3. User has proper permissions"
+        elif "does not exist" in error_msg.lower():
+            return False, "Database does not exist. Please:\n1. Create the database first\n2. Run migrations: alembic upgrade head"
+        else:
+            return False, f"Database connection error: {error_msg}"
+
+# Test connection before creating engine
+logger.info("Testing database connection...")
+db_ok, db_message = test_database_connection(settings.DATABASE_URL)
+
+if not db_ok:
+    logger.error(f"Database connection test failed: {db_message}")
+    logger.error(f"DATABASE_URL format: {settings.DATABASE_URL.split('@')[1] if '@' in settings.DATABASE_URL else 'invalid'}")
+    # Don't raise here - let Streamlit show a better error message
+    # raise ConnectionError(db_message)
+else:
+    logger.info(db_message)
+
 # Create database engine with optimized connection pooling
 engine = create_engine(
     settings.DATABASE_URL,
