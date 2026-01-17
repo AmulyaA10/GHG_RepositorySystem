@@ -24,6 +24,7 @@ class User(Base):
     audit_logs = relationship("AuditLog", back_populates="user", lazy='select')
     reviews = relationship("Review", back_populates="reviewer", lazy='select')
     approvals = relationship("Approval", back_populates="approver", lazy='select')
+    password_reset_tokens = relationship("PasswordResetToken", back_populates="user", lazy='select', cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User(id={self.id}, username='{self.username}', role='{self.role}')>"

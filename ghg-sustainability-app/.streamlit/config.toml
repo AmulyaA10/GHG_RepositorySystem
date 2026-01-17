@@ -17,3 +17,7 @@ maxUploadSize = 10
 [client]
 showErrorDetails = true
 toolbarMode = "minimal"
+
+[ui]
+hideTopBar = true
+hideSidebarNav = true

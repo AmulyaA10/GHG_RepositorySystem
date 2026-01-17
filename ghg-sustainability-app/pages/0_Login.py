@@ -5,7 +5,7 @@ import streamlit as st
 from core.db import get_db
 from core.auth import authenticate_user
 from core.config import settings
-from core.ui import load_custom_css, page_header, info_card
+from core.ui import load_custom_css, page_header, info_card, render_ecotrack_sidebar
 
 st.set_page_config(
     page_title=f"{settings.APP_NAME} - Login",
@@ -16,34 +16,8 @@ st.set_page_config(
 # Load custom CSS
 load_custom_css()
 
-# Add sidebar title and hide default "app" text
-with st.sidebar:
-    st.markdown(
-        """
-        <div style="text-align: center; padding: 1rem 0; margin-bottom: 1.5rem;
-                    background: linear-gradient(135deg, #E8EFF6 0%, #F0F4F8 100%);
-                    border-radius: 12px; border: 2px solid #1E40AF;">
-            <h2 style="margin: 0; color: #0C1E2E; font-size: 1.25rem; font-weight: 700;">
-                🌍 GHG Sustainability App
-            </h2>
-        </div>
-
-        <script>
-            setTimeout(function() {
-                const sidebar = document.querySelector('[data-testid="stSidebar"]');
-                if (sidebar) {
-                    const allDivs = sidebar.querySelectorAll('div');
-                    allDivs.forEach(div => {
-                        if (div.textContent.trim() === 'app' && div.children.length === 0) {
-                            div.remove();
-                        }
-                    });
-                }
-            }, 100);
-        </script>
-        """,
-        unsafe_allow_html=True
-    )
+# Render unified sidebar
+render_ecotrack_sidebar()
 
 def login_page():
     """Render login page"""
@@ -58,14 +32,15 @@ def login_page():
         st.success("✅ **Logged out successfully!** Please login again to continue.")
         del st.session_state.just_logged_out
 
-    # Check if already logged in
+    # Check if already logged in - redirect to home
     if st.session_state.get("user"):
         st.success(f"✅ Already logged in as {st.session_state.user.full_name} ({st.session_state.user.role})")
-        st.info("Navigate to other pages using the sidebar")
+        st.info("Redirecting to home page...")
 
-        if st.button("Logout"):
-            st.session_state.clear()
-            st.rerun()
+        # Add a small delay to show the message, then redirect
+        import time
+        time.sleep(1)
+        st.switch_page("app.py")
         return
 
     # Login form
@@ -75,7 +50,14 @@ def login_page():
         username = st.text_input("Username", placeholder="Enter your username")
         password = st.text_input("Password", type="password", placeholder="Enter your password")
 
-        submit = st.form_submit_button("Login", use_container_width=True)
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            submit = st.form_submit_button("Login", use_container_width=True)
+        with col2:
+            forgot_password = st.form_submit_button("Forgot Password?", use_container_width=True, type="secondary")
+
+        if forgot_password:
+            st.switch_page("pages/7_Forgot_Password.py")
 
         if submit:
             if not username or not password:
@@ -98,7 +80,11 @@ def login_page():
                     st.success(f"✅ Login successful! Welcome {user.full_name}")
                     st.info(f"Role: {settings.ROLES[user.role]}")
                     st.balloons()
-                    st.rerun()
+
+                    # Redirect to home page after successful login
+                    import time
+                    time.sleep(1)
+                    st.switch_page("app.py")
                 else:
                     st.error("❌ Invalid username or password")
             finally:

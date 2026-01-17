@@ -5,7 +5,7 @@ import streamlit as st
 from core.db import get_db
 from core.auth import require_role
 from core.config import settings
-from core.ui import load_custom_css, page_header, sidebar_logout_button
+from core.ui import load_custom_css, page_header, render_ecotrack_sidebar
 from core.formulas import FormulaEngine
 from core.workflow import WorkflowManager
 from models import Project, ProjectData, Calculation, Ecoinvent
@@ -21,34 +21,8 @@ st.set_page_config(
 # Load custom CSS
 load_custom_css()
 
-# Add sidebar title and hide default "app" text
-with st.sidebar:
-    st.markdown(
-        """
-        <div style="text-align: center; padding: 1rem 0; margin-bottom: 1.5rem;
-                    background: linear-gradient(135deg, #E8EFF6 0%, #F0F4F8 100%);
-                    border-radius: 12px; border: 2px solid #1E40AF;">
-            <h2 style="margin: 0; color: #0C1E2E; font-size: 1.25rem; font-weight: 700;">
-                🌍 GHG Sustainability App
-            </h2>
-        </div>
-
-        <script>
-            setTimeout(function() {
-                const sidebar = document.querySelector('[data-testid="stSidebar"]');
-                if (sidebar) {
-                    const allDivs = sidebar.querySelectorAll('div');
-                    allDivs.forEach(div => {
-                        if (div.textContent.trim() === 'app' && div.children.length === 0) {
-                            div.remove();
-                        }
-                    });
-                }
-            }, 100);
-        </script>
-        """,
-        unsafe_allow_html=True
-    )
+# Render unified sidebar
+render_ecotrack_sidebar()
 
 def check_auth():
     """Check if user is logged in and has L2 role"""
@@ -314,15 +288,20 @@ def update_project_totals(db: Session, project: Project):
     db.commit()
 
 def complete_calculations(db: Session, project: Project):
-    """Submit calculations for review"""
+    """Submit calculations for review or send back for more data"""
     st.markdown("---")
-    st.subheader("Submit for Review")
+    st.subheader("Complete Calculations")
 
     # Show submission confirmation if just submitted
     if st.session_state.get(f"l2_submitted_{project.id}"):
         st.success("✅ **Calculations submitted successfully!** Project is now ready for Level 3 quality review.")
         st.balloons()
         del st.session_state[f"l2_submitted_{project.id}"]
+
+    # Show send back confirmation if just sent back
+    if st.session_state.get(f"l2_sentback_{project.id}"):
+        st.success("✅ **Project sent back to Data Entry!** L1 users can now add more data entries.")
+        del st.session_state[f"l2_sentback_{project.id}"]
 
     # Check if all calculations done
     data_count = db.query(ProjectData).filter(ProjectData.project_id == project.id).count()
@@ -350,30 +329,96 @@ def complete_calculations(db: Session, project: Project):
     if calc_count < data_count:
         st.warning(f"⚠️ Only {calc_count} / {data_count} calculations completed. You can submit now, but consider completing all calculations for a complete review.")
 
-    if st.button("📤 Submit for Review", type="primary", use_container_width=True):
-        try:
-            can_transition, message = WorkflowManager.can_transition(
-                project.status,
-                "PENDING_REVIEW",
-                st.session_state.user.role
+    st.markdown("---")
+
+    col1, col2 = st.columns([2, 1])
+
+    with col1:
+        if st.button("📤 Submit for Review", type="primary", use_container_width=True):
+            try:
+                can_transition, message = WorkflowManager.can_transition(
+                    project.status,
+                    "PENDING_REVIEW",
+                    st.session_state.user.role
+                )
+
+                if can_transition:
+                    WorkflowManager.transition(
+                        db=db,
+                        project=project,
+                        new_status="PENDING_REVIEW",
+                        user_id=st.session_state.user.id,
+                        user_role=st.session_state.user.role
+                    )
+                    # Store submission confirmation in session
+                    st.session_state[f"l2_submitted_{project.id}"] = True
+                    st.rerun()
+                else:
+                    st.error(f"Cannot submit: {message}")
+
+            except Exception as e:
+                st.error(f"Error submitting: {e}")
+
+    with col2:
+        # Toggle send back form
+        if 'show_sendback_form' not in st.session_state:
+            st.session_state.show_sendback_form = False
+
+        if st.button("↩️ Send Back to L1", type="secondary", use_container_width=True,
+                     help="Send project back to Data Entry for more entries"):
+            st.session_state.show_sendback_form = True
+            st.rerun()
+
+    # Send back form (shown below the buttons)
+    if st.session_state.get('show_sendback_form'):
+        st.markdown("---")
+        st.subheader("↩️ Send Project Back for More Data Entry")
+
+        with st.form(f"sendback_form_{project.id}"):
+            st.warning("⚠️ This will return the project to SUBMITTED status, allowing L1 users to add more data entries.")
+
+            comments = st.text_area(
+                "Reason for sending back (optional):",
+                placeholder="e.g., Need more data entries for Scope 3 transportation",
+                help="Explain why more data is needed"
             )
 
-            if can_transition:
-                WorkflowManager.transition(
-                    db=db,
-                    project=project,
-                    new_status="PENDING_REVIEW",
-                    user_id=st.session_state.user.id,
-                    user_role=st.session_state.user.role
-                )
-                # Store submission confirmation in session
-                st.session_state[f"l2_submitted_{project.id}"] = True
-                st.rerun()
-            else:
-                st.error(f"Cannot submit: {message}")
+            col_a, col_b = st.columns(2)
+            with col_a:
+                submit_sendback = st.form_submit_button("✓ Confirm Send Back", type="primary", use_container_width=True)
+            with col_b:
+                cancel_sendback = st.form_submit_button("✗ Cancel", type="secondary", use_container_width=True)
 
-        except Exception as e:
-            st.error(f"Error submitting: {e}")
+            if cancel_sendback:
+                st.session_state.show_sendback_form = False
+                st.rerun()
+
+            if submit_sendback:
+                try:
+                    can_transition, message = WorkflowManager.can_transition(
+                        project.status,
+                        "SUBMITTED",
+                        st.session_state.user.role
+                    )
+
+                    if can_transition:
+                        WorkflowManager.transition(
+                            db=db,
+                            project=project,
+                            new_status="SUBMITTED",
+                            user_id=st.session_state.user.id,
+                            user_role=st.session_state.user.role,
+                            comments=comments if comments else "Sent back for additional data entry"
+                        )
+                        # Store send back confirmation in session
+                        st.session_state[f"l2_sentback_{project.id}"] = True
+                        st.session_state.show_sendback_form = False
+                        st.rerun()
+                    else:
+                        st.error(f"Cannot send back: {message}")
+
+                except Exception as e:
+                    st.error(f"Error sending back: {e}")
 
 def main():
     """Main function"""
@@ -495,9 +540,6 @@ def main():
                 else:
                     st.info("No projects pending calculation.")
                 selected_project = None
-
-        # Logout button in sidebar
-        sidebar_logout_button()
 
         # Main content
         if selected_project:

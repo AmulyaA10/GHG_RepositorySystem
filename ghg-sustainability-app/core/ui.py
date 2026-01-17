@@ -5,6 +5,7 @@ import streamlit as st
 from pathlib import Path
 from core.auth import logout
 
+
 def load_custom_css():
     """Load custom CSS styling"""
     css_file = Path(__file__).parent.parent / "assets" / "style.css"
@@ -12,6 +13,231 @@ def load_custom_css():
     if css_file.exists():
         with open(css_file) as f:
             st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+    # Add comprehensive sidebar and UI styling
+    st.markdown("""
+    <style>
+        /* Hide default Streamlit branding and UI elements */
+        #MainMenu {visibility: hidden !important; display: none !important;}
+        footer {visibility: hidden !important; display: none !important;}
+        header {visibility: hidden !important; display: none !important;}
+
+        /* Hide Streamlit hamburger menu */
+        button[kind="header"] {display: none !important;}
+
+        /* Force hide sidebar navigation - multiple selectors for robustness */
+        [data-testid="stSidebarNav"],
+        section[data-testid="stSidebarNav"],
+        nav[data-testid="stSidebarNav"] {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            max-height: 0 !important;
+            overflow: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
+        /* Hide all navigation list items */
+        [data-testid="stSidebarNav"] ul,
+        [data-testid="stSidebarNav"] li,
+        [data-testid="stSidebarNav"] a {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
+        /* Clean sidebar styling */
+        [data-testid="stSidebar"] {
+            background: #ffffff;
+            border-right: 1px solid #e5e7eb;
+        }
+
+        [data-testid="stSidebar"] > div:first-child {
+            padding-top: 0 !important;
+        }
+
+        /* Ensure sidebar content container is clean */
+        section[data-testid="stSidebar"] > div {
+            padding-top: 0 !important;
+        }
+
+        /* Remove any residual navigation spacing */
+        [data-testid="stSidebarNav"] + div,
+        section[data-testid="stSidebarNav"] + div {
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
+
+        /* Custom navigation item styling */
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            margin: 4px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            color: #374151;
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        .nav-item:hover {
+            background: #f3f4f6;
+        }
+
+        .nav-item.active {
+            background: #eff6ff;
+            color: #2563eb;
+        }
+
+        .nav-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+            opacity: 0.7;
+        }
+
+        .nav-item.active .nav-icon {
+            opacity: 1;
+        }
+
+        /* Compliance footer */
+        .compliance-footer {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: calc(var(--sidebar-width, 300px) - 40px);
+            background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+            border: 1px solid #bbf7d0;
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .compliance-title {
+            color: #166534;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .compliance-text {
+            color: #15803d;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+
+def render_ecotrack_sidebar():
+    """Render the EcoTrack branded sidebar"""
+    with st.sidebar:
+        # Logo and brand
+        st.markdown("""
+        <div style="padding: 20px 16px 24px 16px; border-bottom: 1px solid #e5e7eb;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M16 4C16 4 8 8 8 16C8 20 10 24 16 28C22 24 24 20 24 16C24 8 16 4 16 4Z"
+                          stroke="#2563eb" stroke-width="2" fill="none"/>
+                    <path d="M16 8C16 8 12 10 12 16C12 18 13 20 16 22C19 20 20 18 20 16C20 10 16 8 16 8Z"
+                          fill="#2563eb" opacity="0.3"/>
+                </svg>
+                <span style="font-size: 24px; font-weight: 700; color: #2563eb;">EcoTrack</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("<div style='height: 16px'></div>", unsafe_allow_html=True)
+
+        # Check if user is logged in
+        user = st.session_state.get("user")
+
+        # Navigation items
+        current_page = st.session_state.get("current_page", "Dashboard")
+
+        # Login/Logout section
+        if not user:
+            # Show Login button if not logged in
+            if st.button("🔐  Login", key="nav_login", use_container_width=True, type="primary"):
+                st.session_state.current_page = "Login"
+                st.switch_page("pages/0_Login.py")
+
+            st.markdown("---")
+            st.caption("Please login to access all features")
+        else:
+            # Show user info and logout if logged in
+            st.markdown(f"""
+            <div style="
+                background: #f9fafb;
+                padding: 12px;
+                border-radius: 8px;
+                margin-bottom: 12px;
+            ">
+                <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">Logged in as</div>
+                <div style="font-weight: 600; color: #1f2937;">{user.username if hasattr(user, 'username') else 'User'}</div>
+                <div style="font-size: 12px; color: #2563eb;">{user.role if hasattr(user, 'role') else 'N/A'}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("<div style='height: 8px'></div>", unsafe_allow_html=True)
+
+        # Dashboard
+        if st.button("📊  Dashboard", key="nav_dashboard", use_container_width=True,
+                     type="primary" if current_page == "Dashboard" else "secondary"):
+            st.session_state.current_page = "Dashboard"
+            st.switch_page("pages/4_Dashboard.py")
+
+        # Data Collection
+        if st.button("📋  Data Collection", key="nav_collection", use_container_width=True,
+                     type="primary" if current_page == "Data Collection" else "secondary"):
+            st.session_state.current_page = "Data Collection"
+            st.switch_page("pages/1_Data_Collection.py")
+
+        # Emission Factors
+        if st.button("⚙️  Emission Factors", key="nav_emission", use_container_width=True,
+                     type="primary" if current_page == "Emission Factors" else "secondary"):
+            st.session_state.current_page = "Emission Factors"
+            st.switch_page("pages/2_Emission_Factors.py")
+
+        # Review (if user is L3 or higher)
+        if user and hasattr(user, 'role') and user.role in ["L3", "L4"]:
+            if st.button("✅  Review", key="nav_review", use_container_width=True,
+                         type="primary" if current_page == "Review" else "secondary"):
+                st.session_state.current_page = "Review"
+                st.switch_page("pages/3_Review.py")
+
+        # Logout button if logged in
+        if user:
+            st.markdown("<div style='height: 8px'></div>", unsafe_allow_html=True)
+            if st.button("🚪  Logout", key="nav_logout", use_container_width=True, type="secondary"):
+                from core.auth import logout
+                logout()
+                st.session_state.just_logged_out = True
+                st.switch_page("pages/0_Login.py")
+
+        # Spacer
+        st.markdown("<div style='flex: 1; min-height: 100px;'></div>", unsafe_allow_html=True)
+
+        # GHG Protocol Compliant footer
+        st.markdown("""
+        <div style="
+            background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+            border: 1px solid #bbf7d0;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 20px 0;
+        ">
+            <div style="color: #166534; font-weight: 600; font-size: 14px; margin-bottom: 4px;">
+                GHG Protocol Compliant
+            </div>
+            <div style="color: #15803d; font-size: 12px; line-height: 1.4;">
+                Calculations based on ISO 14064-1 & GHG Protocol Standards.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 def status_badge(status: str) -> str:
     """
@@ -289,13 +515,22 @@ def sidebar_logout_button():
 
         with st.sidebar:
             st.markdown("---")
-            st.markdown("**👤 Current User**")
-            st.write(f"**Username:** {username}")
-            st.write(f"**Role:** {role}")
+            st.markdown(f"""
+            <div style="
+                background: #f9fafb;
+                padding: 12px;
+                border-radius: 8px;
+                margin: 8px 0;
+            ">
+                <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">Logged in as</div>
+                <div style="font-weight: 600; color: #1f2937;">{username}</div>
+                <div style="font-size: 12px; color: #2563eb;">{role}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
             if st.button("🚪 Logout", use_container_width=True, type="secondary"):
                 logout()
                 # Set flag to show logout message on login page
                 st.session_state.just_logged_out = True
                 # Use switch_page to redirect to login page
-                st.switch_page("pages/0_🔐_Login.py")
+                st.switch_page("pages/0_Login.py")

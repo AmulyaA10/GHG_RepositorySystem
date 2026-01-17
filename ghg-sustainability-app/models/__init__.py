@@ -13,6 +13,7 @@ from models.reason_code import ReasonCode
 from models.formula import Formula
 from models.audit_log import AuditLog
 from models.evidence import Evidence
+from models.password_reset import PasswordResetToken
 
 __all__ = [
     'User',
@@ -26,5 +27,6 @@ __all__ = [
     'ReasonCode',
     'Formula',
     'AuditLog',
-    'Evidence'
+    'Evidence',
+    'PasswordResetToken'
 ]

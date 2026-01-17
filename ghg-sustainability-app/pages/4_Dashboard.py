@@ -5,7 +5,7 @@ import streamlit as st
 from core.db import get_db
 from core.auth import require_role
 from core.config import settings
-from core.ui import load_custom_css, sidebar_logout_button
+from core.ui import load_custom_css, render_ecotrack_sidebar
 from core.workflow import WorkflowManager
 from core.reporting import report_generator
 from core.emailer import send_workflow_email
@@ -25,34 +25,8 @@ st.set_page_config(
 # Load custom CSS
 load_custom_css()
 
-# Add sidebar title and hide default "app" text
-with st.sidebar:
-    st.markdown(
-        """
-        <div style="text-align: center; padding: 1rem 0; margin-bottom: 1.5rem;
-                    background: linear-gradient(135deg, #E8EFF6 0%, #F0F4F8 100%);
-                    border-radius: 12px; border: 2px solid #1E40AF;">
-            <h2 style="margin: 0; color: #0C1E2E; font-size: 1.25rem; font-weight: 700;">
-                🌍 GHG Sustainability App
-            </h2>
-        </div>
-
-        <script>
-            setTimeout(function() {
-                const sidebar = document.querySelector('[data-testid="stSidebar"]');
-                if (sidebar) {
-                    const allDivs = sidebar.querySelectorAll('div');
-                    allDivs.forEach(div => {
-                        if (div.textContent.trim() === 'app' && div.children.length === 0) {
-                            div.remove();
-                        }
-                    });
-                }
-            }, 100);
-        </script>
-        """,
-        unsafe_allow_html=True
-    )
+# Render unified sidebar
+render_ecotrack_sidebar()
 
 # Cached query functions for performance
 @st.cache_data(ttl=300)  # Cache for 5 minutes
@@ -475,9 +449,6 @@ def main():
     st.title("📊 Level 4 - Dashboard & Approval")
     st.markdown("View aggregates, approve projects, and export reports")
     st.markdown("---")
-
-    # Logout button in sidebar
-    sidebar_logout_button()
 
     db = next(get_db())
 

@@ -1,16 +1,17 @@
 """
-GHG Sustainability Reporting System - Main Application
+EcoTrack - GHG Sustainability Reporting System
+Main Application
 """
 import streamlit as st
-from core.config import settings
-from core.db import get_db
-from core.ui import load_custom_css, page_header, metric_card, info_card
-from models import Project
 from sqlalchemy import func
 
+from core.config import settings
+from core.ui import load_custom_css, metric_card, info_card, render_ecotrack_sidebar
+from models import Project
+
 st.set_page_config(
-    page_title=settings.APP_NAME,
-    page_icon="🌍",
+    page_title="EcoTrack",
+    page_icon="🌿",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -18,42 +19,8 @@ st.set_page_config(
 # Load custom CSS
 load_custom_css()
 
-# Add sidebar title and hide default "app" text
-with st.sidebar:
-    # Custom title
-    st.markdown(
-        """
-        <div style="text-align: center; padding: 1rem 0; margin-bottom: 1.5rem;
-                    background: linear-gradient(135deg, #E8EFF6 0%, #F0F4F8 100%);
-                    border-radius: 12px; border: 2px solid #1E40AF;">
-            <h2 style="margin: 0; color: #0C1E2E; font-size: 1.25rem; font-weight: 700;">
-                🌍 GHG Sustainability App
-            </h2>
-        </div>
-
-        <script>
-            // Hide the default "app" text
-            setTimeout(function() {
-                const sidebar = document.querySelector('[data-testid="stSidebar"]');
-                if (sidebar) {
-                    const firstDiv = sidebar.querySelector('div > div:first-child');
-                    if (firstDiv && firstDiv.textContent.trim() === 'app') {
-                        firstDiv.style.display = 'none';
-                    }
-
-                    // Alternative: remove all small text before navigation
-                    const allDivs = sidebar.querySelectorAll('div');
-                    allDivs.forEach(div => {
-                        if (div.textContent.trim() === 'app' && div.children.length === 0) {
-                            div.remove();
-                        }
-                    });
-                }
-            }, 100);
-        </script>
-        """,
-        unsafe_allow_html=True
-    )
+# Render EcoTrack sidebar
+render_ecotrack_sidebar()
 
 # Cached query functions for home page dashboard
 @st.cache_data(ttl=180)  # Cache for 3 minutes
@@ -112,14 +79,27 @@ def get_home_emissions(db_url: str):
 
 def main():
     """Main application entry point"""
-    page_header(
-        title="GHG Sustainability Reporting System",
-        subtitle="ISO 14064-1 Compliant Emissions Calculation & Reporting",
-        icon="🌍"
-    )
 
     # Check if user is logged in
     if not st.session_state.get("user"):
+        # Welcome page for logged out users
+        st.markdown("""
+        <div style="text-align: center; padding: 40px 20px;">
+            <div style="display: inline-flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                <svg width="48" height="48" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M16 4C16 4 8 8 8 16C8 20 10 24 16 28C22 24 24 20 24 16C24 8 16 4 16 4Z"
+                          stroke="#2563eb" stroke-width="2" fill="none"/>
+                    <path d="M16 8C16 8 12 10 12 16C12 18 13 20 16 22C19 20 20 18 20 16C20 10 16 8 16 8Z"
+                          fill="#2563eb" opacity="0.3"/>
+                </svg>
+                <span style="font-size: 36px; font-weight: 700; color: #2563eb;">EcoTrack</span>
+            </div>
+            <p style="font-size: 18px; color: #6b7280; margin-bottom: 40px;">
+                GHG Sustainability Reporting System
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
         info_card(
             title="Please Login",
             content="Use the Login page from the sidebar to access the system",
@@ -135,13 +115,12 @@ def main():
             info_card(
                 title="System Features",
                 content="""
-                • 4-level role-based workflow<br>
-                • 23 GHG Protocol categories<br>
-                • Ecoinvent emission factors database<br>
+                • ISO 14064-1 Compliant<br>
+                • GHG Protocol Standards<br>
+                • Ecoinvent emission factors<br>
                 • Automated calculations<br>
                 • Review & approval workflow<br>
-                • Excel & PDF report generation<br>
-                • Complete audit trail
+                • Excel & PDF reports
                 """,
                 icon="✨",
                 color="blue"
@@ -151,10 +130,10 @@ def main():
             info_card(
                 title="User Roles",
                 content="""
-                <strong>L1:</strong> Data Entry Specialist<br>
-                <strong>L2:</strong> Calculation Specialist<br>
-                <strong>L3:</strong> QA Reviewer<br>
-                <strong>L4:</strong> Approver/Manager
+                <strong>L1:</strong> Data Collection<br>
+                <strong>L2:</strong> Emission Factors<br>
+                <strong>L3:</strong> QA Review<br>
+                <strong>L4:</strong> Dashboard & Approval
                 """,
                 icon="👥",
                 color="green"
@@ -163,16 +142,28 @@ def main():
         return
 
     # User is logged in - show dashboard
-    st.success(f"✅ Logged in as: **{st.session_state.user.full_name}** ({st.session_state.user.role})")
+    user = st.session_state.user
+    st.markdown(f"""
+    <div style="
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        padding: 16px 20px;
+        border-radius: 12px;
+        border: 1px solid #bfdbfe;
+        margin-bottom: 24px;
+    ">
+        <span style="color: #1e40af; font-weight: 500;">
+            👤 Welcome back, <strong>{user.full_name}</strong> ({user.role})
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("### 📊 Quick Overview", unsafe_allow_html=True)
+    st.markdown("### 📊 Overview", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 
     # Get cached statistics
     stats = get_home_stats(settings.DATABASE_URL, st.session_state.user.id)
 
-    # Overall statistics - using cached data
+    # Overall statistics
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
@@ -187,9 +178,9 @@ def main():
     with col4:
         metric_card("Completed", str(stats['completed']), icon="✅")
 
-    # Total emissions - using cached data
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    st.markdown("### 🌍 Total Emissions (All Projects)", unsafe_allow_html=True)
+    # Total emissions
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("### 🌍 Total Emissions", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 
     totals = get_home_emissions(settings.DATABASE_URL)
@@ -203,58 +194,26 @@ def main():
     with col3:
         metric_card("Scope 3", f"{totals['scope3']:,.2f} tCO2e", icon="🚛")
     with col4:
-        metric_card("Total Emissions", f"{totals['total']:,.2f} tCO2e", icon="🌍")
+        metric_card("Total", f"{totals['total']:,.2f} tCO2e", icon="🌍")
 
-    db = next(get_db())
+    # Quick actions
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("### 🚀 Quick Actions", unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
 
-    try:
+    col1, col2, col3 = st.columns(3)
 
-        # Navigation instructions
-        st.markdown("<br><br>", unsafe_allow_html=True)
+    with col1:
+        if st.button("📋 Data Collection", use_container_width=True, type="primary"):
+            st.switch_page("pages/1_Data_Collection.py")
 
-        info_card(
-            title="Navigation",
-            content="Use the sidebar to navigate to your role-specific pages",
-            icon="👈",
-            color="blue"
-        )
+    with col2:
+        if st.button("⚙️ Emission Factors", use_container_width=True, type="secondary"):
+            st.switch_page("pages/2_Emission_Factors.py")
 
-        # Role-specific quick links
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("### 🚀 Quick Actions", unsafe_allow_html=True)
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        if st.session_state.user.role == "L1":
-            info_card(
-                title="Level 1 - Data Entry",
-                content="Create projects and enter activity data for GHG emissions calculations",
-                icon="📝",
-                color="blue"
-            )
-        elif st.session_state.user.role == "L2":
-            info_card(
-                title="Level 2 - Calculations",
-                content="Perform emission calculations using Ecoinvent database factors",
-                icon="🧮",
-                color="green"
-            )
-        elif st.session_state.user.role == "L3":
-            info_card(
-                title="Level 3 - Quality Review",
-                content="Review calculated emissions and approve or reject projects",
-                icon="✅",
-                color="yellow"
-            )
-        elif st.session_state.user.role == "L4":
-            info_card(
-                title="Level 4 - Dashboard & Approval",
-                content="View aggregated metrics, export reports, and lock projects",
-                icon="📊",
-                color="blue"
-            )
-
-    finally:
-        db.close()
+    with col3:
+        if st.button("📊 Dashboard", use_container_width=True, type="secondary"):
+            st.switch_page("pages/4_Dashboard.py")
 
 if __name__ == "__main__":
     main()

@@ -5,7 +5,7 @@ import streamlit as st
 from core.db import get_db
 from core.auth import require_role
 from core.config import settings
-from core.ui import load_custom_css, sidebar_logout_button
+from core.ui import load_custom_css, render_ecotrack_sidebar
 from core.storage import storage
 from core.validation import DataValidator, ValidationError
 from core.workflow import WorkflowManager
@@ -22,34 +22,8 @@ st.set_page_config(
 # Load custom CSS
 load_custom_css()
 
-# Add sidebar title and hide default "app" text
-with st.sidebar:
-    st.markdown(
-        """
-        <div style="text-align: center; padding: 1rem 0; margin-bottom: 1.5rem;
-                    background: linear-gradient(135deg, #E8EFF6 0%, #F0F4F8 100%);
-                    border-radius: 12px; border: 2px solid #1E40AF;">
-            <h2 style="margin: 0; color: #0C1E2E; font-size: 1.25rem; font-weight: 700;">
-                🌍 GHG Sustainability App
-            </h2>
-        </div>
-
-        <script>
-            setTimeout(function() {
-                const sidebar = document.querySelector('[data-testid="stSidebar"]');
-                if (sidebar) {
-                    const allDivs = sidebar.querySelectorAll('div');
-                    allDivs.forEach(div => {
-                        if (div.textContent.trim() === 'app' && div.children.length === 0) {
-                            div.remove();
-                        }
-                    });
-                }
-            }, 100);
-        </script>
-        """,
-        unsafe_allow_html=True
-    )
+# Render unified sidebar
+render_ecotrack_sidebar()
 
 def check_auth():
     """Check if user is logged in and has L1 role"""
@@ -535,9 +509,6 @@ def main():
             if st.button("➕ Create New Project", use_container_width=True):
                 st.session_state.show_create_form = True
 
-        # Logout button in sidebar
-        sidebar_logout_button()
-
         # Main content
         if st.session_state.get("show_create_form") or not projects:
             create_project_form(db)
@@ -568,6 +539,52 @@ def main():
                         st.write(f"**Approved:** {selected_project.approved_at.strftime('%Y-%m-%d %H:%M')}")
 
                 st.info(f"ℹ️ Project is in {selected_project.status} status. Data entry is locked.")
+
+                # Option to reopen SUBMITTED projects
+                if selected_project.status == "SUBMITTED":
+                    st.markdown("---")
+                    st.subheader("🔓 Reopen Project for Editing")
+
+                    # Check if reopening is allowed
+                    can_reopen, reopen_message = WorkflowManager.can_transition(
+                        selected_project.status,
+                        "DRAFT",
+                        st.session_state.user.role
+                    )
+
+                    if can_reopen:
+                        with st.form(f"reopen_form_{selected_project.id}"):
+                            st.warning("⚠️ This will return the project to DRAFT status, allowing you to add or edit data entries.")
+
+                            reopen_reason = st.text_area(
+                                "Reason for reopening (optional):",
+                                placeholder="e.g., Need to add missing Scope 2 data",
+                                help="Explain why you need to reopen this project"
+                            )
+
+                            col_a, col_b = st.columns(2)
+                            with col_a:
+                                submit_reopen = st.form_submit_button("✓ Reopen Project", type="primary", use_container_width=True)
+                            with col_b:
+                                cancel_reopen = st.form_submit_button("✗ Cancel", type="secondary", use_container_width=True)
+
+                            if submit_reopen:
+                                try:
+                                    WorkflowManager.transition(
+                                        db=db,
+                                        project=selected_project,
+                                        new_status="DRAFT",
+                                        user_id=st.session_state.user.id,
+                                        user_role=st.session_state.user.role,
+                                        comments=reopen_reason if reopen_reason else "Reopened for additional data entry"
+                                    )
+                                    st.success("✅ **Project reopened!** You can now add or edit data entries.")
+                                    st.balloons()
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Error reopening project: {e}")
+                    else:
+                        st.info(f"Cannot reopen: {reopen_message}")
 
                 # Show summary
                 data_items = db.query(ProjectData).filter(ProjectData.project_id == selected_project.id).all()

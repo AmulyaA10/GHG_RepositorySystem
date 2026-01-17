@@ -5,7 +5,7 @@ import streamlit as st
 from core.db import get_db
 from core.auth import require_role
 from core.config import settings
-from core.ui import load_custom_css, page_header, sidebar_logout_button
+from core.ui import load_custom_css, page_header, render_ecotrack_sidebar
 from core.workflow import WorkflowManager
 from core.emailer import send_workflow_email
 from models import Project, ProjectData, Calculation, ReasonCode, Review
@@ -22,34 +22,8 @@ st.set_page_config(
 # Load custom CSS
 load_custom_css()
 
-# Add sidebar title and hide default "app" text
-with st.sidebar:
-    st.markdown(
-        """
-        <div style="text-align: center; padding: 1rem 0; margin-bottom: 1.5rem;
-                    background: linear-gradient(135deg, #E8EFF6 0%, #F0F4F8 100%);
-                    border-radius: 12px; border: 2px solid #1E40AF;">
-            <h2 style="margin: 0; color: #0C1E2E; font-size: 1.25rem; font-weight: 700;">
-                🌍 GHG Sustainability App
-            </h2>
-        </div>
-
-        <script>
-            setTimeout(function() {
-                const sidebar = document.querySelector('[data-testid="stSidebar"]');
-                if (sidebar) {
-                    const allDivs = sidebar.querySelectorAll('div');
-                    allDivs.forEach(div => {
-                        if (div.textContent.trim() === 'app' && div.children.length === 0) {
-                            div.remove();
-                        }
-                    });
-                }
-            }, 100);
-        </script>
-        """,
-        unsafe_allow_html=True
-    )
+# Render unified sidebar
+render_ecotrack_sidebar()
 
 def check_auth():
     """Check if user is logged in and has L3 role"""
@@ -400,9 +374,6 @@ def main():
                 else:
                     st.info("No projects in review queue.")
                 selected_project = None
-
-        # Logout button in sidebar
-        sidebar_logout_button()
 
         # Main content
         if selected_project:
