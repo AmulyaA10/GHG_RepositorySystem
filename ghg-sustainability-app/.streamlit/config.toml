@@ -10,7 +10,6 @@ gatherUsageStats = false
 
 [server]
 headless = true
-enableCORS = false
 enableXsrfProtection = true
 maxUploadSize = 10
 
@@ -20,4 +19,3 @@ toolbarMode = "minimal"
 
 [ui]
 hideTopBar = true
-hideSidebarNav = true

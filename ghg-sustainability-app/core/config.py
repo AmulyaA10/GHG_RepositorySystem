@@ -4,9 +4,52 @@ Configuration Management for GHG Sustainability Application
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+import logging
 
-# Load environment variables
+logger = logging.getLogger(__name__)
+
+# Load environment variables from .env file (for local development)
 load_dotenv()
+
+def get_database_url():
+    """
+    Get database URL from multiple sources with validation
+    Priority: Streamlit secrets > Environment variable > Default
+    """
+    database_url = None
+
+    # 1. Try Streamlit secrets (for Streamlit Cloud)
+    try:
+        import streamlit as st
+        if hasattr(st, 'secrets') and 'DATABASE_URL' in st.secrets:
+            database_url = st.secrets['DATABASE_URL']
+            logger.info("Using DATABASE_URL from Streamlit secrets")
+    except ImportError:
+        pass  # Streamlit not available (running tests, etc.)
+    except Exception as e:
+        logger.warning(f"Could not read Streamlit secrets: {e}")
+
+    # 2. Try environment variable
+    if not database_url:
+        database_url = os.getenv("DATABASE_URL")
+        if database_url:
+            logger.info("Using DATABASE_URL from environment variable")
+
+    # 3. Fall back to default (local development)
+    if not database_url:
+        database_url = "postgresql://ghg_user:ghg_password@localhost:5432/ghg_db"
+        logger.warning("Using default DATABASE_URL (local development)")
+
+    # Validate format
+    if not database_url or not database_url.startswith('postgresql://'):
+        error_msg = f"Invalid DATABASE_URL format. Got: {database_url[:30] if database_url else 'None'}..."
+        logger.error(error_msg)
+        raise ValueError(error_msg)
+
+    # Remove any whitespace/newlines
+    database_url = database_url.strip()
+
+    return database_url
 
 class Settings:
     """Application settings"""
@@ -16,11 +59,13 @@ class Settings:
     DEBUG: bool = os.getenv("DEBUG", "False").lower() == "true"
     SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
 
-    # Database
-    DATABASE_URL: str = os.getenv(
-        "DATABASE_URL",
-        "postgresql://ghg_user:ghg_password@localhost:5432/ghg_db"
-    )
+    # Database - Use function to get URL from multiple sources
+    try:
+        DATABASE_URL: str = get_database_url()
+    except Exception as e:
+        logger.critical(f"Failed to get DATABASE_URL: {e}")
+        # Use a placeholder to prevent import errors
+        DATABASE_URL: str = "postgresql://placeholder:placeholder@localhost:5432/placeholder"
 
     # Email
     SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
